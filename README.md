@@ -20,6 +20,12 @@ Or do all of it in one go from Terminal:
 curl -fL -o /tmp/ha-sim-installer.zip https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest/download/Home-Assistant-iOS-Simulator-Installer.zip && ditto -x -k /tmp/ha-sim-installer.zip /Applications && xattr -dr com.apple.quarantine "/Applications/Home Assistant iOS Simulator Installer.app" && open "/Applications/Home Assistant iOS Simulator Installer.app"
 ```
 
+## Updates
+
+The app checks for a new version each time it opens, and you can check any time from the app menu with **Check for Updates…**. When one is available, a banner at the top of the window shows what's new: click **Install Update** and the app downloads it, replaces itself and reopens. You don't need to run the Terminal command again.
+
+Version 0.1 can't update itself. If you have it, download the latest version once by following [Install](#install) again.
+
 ## What you need
 
 - A Mac with Apple silicon (M1 or newer) running macOS 14 or later.
@@ -59,7 +65,9 @@ In the simulator, click to tap and click-and-drag to scroll. Connect to your Hom
 
 ## Troubleshooting
 
-**"Apple could not verify…" or "is damaged and can't be opened".** Run the `xattr` command from [Install](#install) again. It's needed again after every update.
+**"Apple could not verify…" or "is damaged and can't be opened".** Run the `xattr` command from [Install](#install) again. It's needed each time you download the app yourself, but not for updates installed from inside the app.
+
+**"The app couldn't replace itself".** The app needs permission to change the folder it's in. Move it to your Applications folder, or download the update from its release page and install it like the first time.
 
 **"This build can't run in the Simulator".** The build was packaged without parts it needs and would crash on launch. This affects builds made before the Home Assistant iOS project started preparing its simulator builds for use outside Xcode. Pick a newer build.
 

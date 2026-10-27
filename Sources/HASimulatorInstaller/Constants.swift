@@ -9,6 +9,9 @@ enum Constants {
     static let minimumIOSVersion = "16.4"
     static let minimumXcodeVersion = "14.3"
 
+    static let updateRepository = "bgoncal/home-assistant-ios-simulator-installer"
+    static let updateAssetName = "Home-Assistant-iOS-Simulator-Installer.zip"
+
     static let keychainService = "io.home-assistant.SimulatorInstaller"
     static let xcodeBundleIdentifier = "com.apple.dt.Xcode"
     static let xcodeAppStoreURL = URL(string: "macappstore://apps.apple.com/app/id497799835")!

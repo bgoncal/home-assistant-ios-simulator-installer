@@ -2,9 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var model: InstallerModel
+    let updater: Updater
 
     var body: some View {
         Form {
+            UpdateBanner(updater: updater)
             SetupSection(model: model)
             if model.isReady {
                 BuildSection(model: model)
@@ -22,6 +24,7 @@ struct ContentView: View {
         .frame(width: 620)
         .frame(minHeight: 420)
         .task { await model.refreshSetup() }
+        .task { await updater.check(userInitiated: false) }
         .sheet(item: $model.deviceCode) { code in
             SignInSheet(model: model, code: code)
         }
@@ -38,5 +41,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(model: InstallerModel())
+    ContentView(model: InstallerModel(), updater: Updater())
 }
