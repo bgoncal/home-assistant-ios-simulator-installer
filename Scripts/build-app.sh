@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 APP_NAME="Home Assistant iOS Simulator Installer"
 EXECUTABLE="HASimulatorInstaller"
 BUNDLE_ID="io.home-assistant.SimulatorInstaller"
-VERSION="${VERSION:-0.1}"
+VERSION="${VERSION:-0.3}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 swift build -c release

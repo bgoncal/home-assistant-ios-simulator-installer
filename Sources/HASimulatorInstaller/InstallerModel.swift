@@ -318,7 +318,7 @@ final class InstallerModel {
             let missing = try await simulator.missingFrameworks(in: app)
             guard missing.isEmpty else {
                 throw InstallerError(
-                    "This build can't run in the Simulator: it was packaged without parts it needs (\(missing.joined(separator: ", "))), so it would crash as soon as it opens. Builds made before CI started preparing the simulator app have this problem. Try a newer build."
+                    "This build can't run in the Simulator: it was packaged without parts it needs (\(missing.joined(separator: ", "))), so it would crash as soon as it opens. Builds made before October 27, 2026 have this problem. Install the latest version instead, or, for a pull request, ask its author to push a new commit or update the branch so a new build is made."
                 )
             }
 

@@ -69,7 +69,7 @@ In the simulator, click to tap and click-and-drag to scroll. Connect to your Hom
 
 **"The app couldn't replace itself".** The app needs permission to change the folder it's in. Move it to your Applications folder, or download the update from its release page and install it like the first time.
 
-**"This build can't run in the Simulator".** The build was packaged without parts it needs and would crash on launch. This affects builds made before the Home Assistant iOS project started preparing its simulator builds for use outside Xcode. Pick a newer build.
+**"This build can't run in the Simulator".** The build was packaged without parts it needs and would crash on launch. This affects builds made before October 27, 2026, when the Home Assistant iOS project started preparing its simulator builds for use outside Xcode. Install **Latest version** instead. For a pull request, ask its author to push a new commit or update the branch: that makes a new build. Re-running the old checks doesn't help, because they rebuild the same code.
 
 **"The checks for pull request … are still running" or "… failed".** The pull request's build isn't ready, or it didn't pass. Try again later, or ask the pull request's author.
 
@@ -103,6 +103,6 @@ The app lands in `build/Home Assistant iOS Simulator Installer.app`, signed ad h
 
 - `GITHUB_CLIENT_ID`: OAuth App client ID for **Sign In with GitHub…**.
 - `SIGN_IDENTITY` and `NOTARY_PROFILE`: a Developer ID signing identity and a `notarytool` keychain profile, to sign and notarize the app so it opens without the `xattr` step.
-- `VERSION`: the version number, `0.1` by default.
+- `VERSION`: the version number, `0.3` by default.
 
 During development you can also run it with `swift run`.
