@@ -95,6 +95,6 @@ The app lands in `build/Home Assistant iOS Simulator Installer.app`, signed ad h
 
 - `GITHUB_CLIENT_ID`: OAuth App client ID for **Sign In with GitHub…**.
 - `SIGN_IDENTITY` and `NOTARY_PROFILE`: a Developer ID signing identity and a `notarytool` keychain profile, to sign and notarize the app so it opens without the `xattr` step.
-- `VERSION`: the version number, `1.0` by default.
+- `VERSION`: the version number, `0.1` by default.
 
 During development you can also run it with `swift run`.
