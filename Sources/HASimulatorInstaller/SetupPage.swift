@@ -8,8 +8,11 @@ struct SetupPage: View {
         Form {
             UpdateBanner(updater: updater)
             SetupSection(model: model)
+            Section("Android") {
+                AndroidSetupRow(android: model.android)
+            }
             Section {
-                Text("Xcode and an iOS Simulator are only needed for the iOS app. GitHub is needed for test builds of the iOS app and the frontend. Core needs nothing: its first run downloads what it needs.")
+                Text("Xcode and an iOS Simulator are only needed for the iOS app, and the Android emulator for the Android app. GitHub is needed for test builds of both apps and the frontend. Core needs nothing: its first run downloads what it needs.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

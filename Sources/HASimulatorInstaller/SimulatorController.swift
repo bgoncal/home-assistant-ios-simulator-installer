@@ -52,12 +52,13 @@ struct SimulatorController: Sendable {
         }
     }
 
-    func createDevice(_ type: SimulatorDeviceType, runtime: SimulatorRuntime) async throws -> SimulatorDevice {
-        let result = try await simctl(["create", type.name, type.identifier, runtime.identifier])
-        try require(result, "Couldn't create \(type.name)")
+    func createDevice(_ type: SimulatorDeviceType, runtime: SimulatorRuntime, name: String? = nil) async throws -> SimulatorDevice {
+        let name = name ?? type.name
+        let result = try await simctl(["create", name, type.identifier, runtime.identifier])
+        try require(result, "Couldn't create \(name)")
         return SimulatorDevice(
             udid: result.output.trimmingCharacters(in: .whitespacesAndNewlines),
-            name: type.name,
+            name: name,
             runtimeID: runtime.identifier,
             isBooted: false
         )

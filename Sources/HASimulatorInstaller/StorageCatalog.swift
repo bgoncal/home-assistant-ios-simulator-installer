@@ -12,7 +12,7 @@ enum StorageCatalog {
         return await Task.detached(priority: .utility) {
             if group == .tools {
                 guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
-                return [StoredItem(url: directory, title: "uv and Python", date: modificationDate(of: directory), size: size(of: directory))]
+                return [StoredItem(url: directory, title: "uv, Python and Java", date: modificationDate(of: directory), size: size(of: directory))]
             }
             let entries = (try? FileManager.default.contentsOfDirectory(
                 at: directory,

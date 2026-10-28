@@ -6,6 +6,7 @@ import Observation
 final class InstallerModel {
     let activityLog: ActivityLog
     let server: ServerModel
+    let android: AndroidModel
     let recentRuns = RecentRuns()
 
     var iOSEnabled = UserDefaults.standard.object(forKey: "iOSEnabled") as? Bool ?? true {
@@ -26,6 +27,7 @@ final class InstallerModel {
     var catalogError: String?
     var showsXcodeVersions = false
     var showsRuntimeVersions = false
+    var showsAddSimulator = false
     var showsBetas = false
     var activity: Activity?
 
@@ -72,9 +74,11 @@ final class InstallerModel {
         let activityLog = ActivityLog()
         self.activityLog = activityLog
         server = ServerModel(activityLog: activityLog)
+        android = AndroidModel(activityLog: activityLog)
     }
 
     func status(of component: Component) -> ComponentStatus {
+        if component == .androidApp { return android.status() }
         guard component == .iOSApp else { return server.status(of: component) }
         guard iOSEnabled else { return .off }
         if case let .working(message, _) = phase { return .working(message) }
@@ -102,8 +106,9 @@ final class InstallerModel {
     var isReady: Bool { hasXcode && licenseMessage == nil && hasSimulators && isSignedIn }
     var isRecording: Bool { recordingProcess != nil }
     var canSignInWithGitHub: Bool { Constants.gitHubClientID != nil }
-    var isBusy: Bool { phase.isWorking || server.phase.isWorking }
-    var canStop: Bool { isBusy || runningBundleID != nil || server.isRunning }
+    var isBusy: Bool { phase.isWorking || server.phase.isWorking || android.phase.isWorking }
+    var canStop: Bool { isBusy || runningBundleID != nil || server.isRunning || android.isRunning }
+    var canConnectAndroidToServer: Bool { android.isRunning && server.running != nil }
     var canConnectAppToServer: Bool { installedDevice != nil && appURLScheme != nil && server.running != nil }
 
     var selectedRuntime: SimulatorRuntime? {
@@ -139,8 +144,9 @@ final class InstallerModel {
     }
 
     var canRun: Bool {
-        guard !isBusy, iOSEnabled || server.isActive else { return false }
+        guard !isBusy, iOSEnabled || android.enabled || server.isActive else { return false }
         if iOSEnabled, !canInstallApp { return false }
+        if android.enabled, !android.canInstall(isSignedIn: isSignedIn) { return false }
         if server.isActive, !server.canStart(isSignedIn: isSignedIn) { return false }
         return true
     }
@@ -164,6 +170,7 @@ final class InstallerModel {
         errorMessage = nil
 
         await loadToken()
+        await android.refreshSetup()
 
         xcodes = XcodeLocator.installations()
         if selectedXcode.map(xcodes.contains) != true {
@@ -243,6 +250,16 @@ final class InstallerModel {
                 model.selectRuntime(installed.identifier)
             }
         }
+    }
+
+    func addSimulator(_ type: SimulatorDeviceType, runtime: SimulatorRuntime, name: String) async throws {
+        guard let simulator else { return }
+        let device = try await simulator.createDevice(type, runtime: runtime, name: name)
+        activityLog.add("Added the \(name) simulator", for: .iOSApp)
+        UserDefaults.standard.set(device.udid, forKey: "iOSDeviceUDID")
+        await reloadInventory()
+        selectRuntime(runtime.identifier)
+        deviceChoice = .existing(devices.first { $0.udid == device.udid } ?? device)
     }
 
     func cancelActivity() {
@@ -329,6 +346,9 @@ final class InstallerModel {
         RunSelection(
             iOSEnabled: iOSEnabled,
             iOSPullRequest: usePullRequest ? BuildSource.pullRequestNumber(from: pullRequestText) : nil,
+            androidEnabled: android.enabled,
+            androidPullRequest: android.usePullRequest ? BuildSource.pullRequestNumber(from: android.pullRequestText) : nil,
+            androidFlavorValue: android.flavor.rawValue,
             coreEnabled: server.coreEnabled,
             coreChannelValue: server.coreChannel.rawValue,
             corePullRequest: server.coreChannel == .pullRequest ? server.corePullRequest : nil,
@@ -343,6 +363,10 @@ final class InstallerModel {
         iOSEnabled = selection.iOSEnabled
         usePullRequest = selection.iOSPullRequest != nil
         pullRequestText = selection.iOSPullRequest.map(String.init) ?? ""
+        android.enabled = selection.androidEnabled ?? false
+        android.usePullRequest = selection.androidPullRequest != nil
+        android.pullRequestText = selection.androidPullRequest.map(String.init) ?? ""
+        android.flavor = selection.androidFlavorValue.flatMap(AndroidFlavor.init(rawValue:)) ?? .full
         server.coreEnabled = selection.coreEnabled
         server.coreChannel = selection.coreChannel
         server.corePullRequestText = selection.corePullRequest.map(String.init) ?? ""
@@ -358,7 +382,8 @@ final class InstallerModel {
         installTask = Task {
             async let serverRun: Void = startServerIfNeeded()
             async let appRun: Void = installAppIfNeeded()
-            _ = await (serverRun, appRun)
+            async let androidRun: Void = installAndroidAppIfNeeded()
+            _ = await (serverRun, appRun, androidRun)
             installTask = nil
         }
     }
@@ -369,6 +394,7 @@ final class InstallerModel {
             return
         }
         await server.stop()
+        await android.stopApp()
         guard let simulator, let installedDevice, let runningBundleID else { return }
         do {
             try await simulator.terminate(bundleID: runningBundleID, on: installedDevice)
@@ -395,6 +421,25 @@ final class InstallerModel {
             return
         }
         await server.start(token: token)
+    }
+
+    func downloadAPK() {
+        guard let token, !isBusy else { return }
+        Task { await android.download(token: token) }
+    }
+
+    func connectAndroidToServer() async {
+        guard let running = server.running else { return }
+        await android.connect(to: running.port)
+    }
+
+    func takeAndroidScreenshot() async {
+        await android.takeScreenshot(to: desktopFile(extension: "png"))
+    }
+
+    private func installAndroidAppIfNeeded() async {
+        guard android.enabled, let token else { return }
+        await android.install(token: token)
     }
 
     private func installAppIfNeeded() async {
@@ -475,6 +520,7 @@ final class InstallerModel {
             runningBundleID = bundleID
             installedArtifactID = build.artifactID
             installedBuild = build
+            UserDefaults.standard.set(device.udid, forKey: "iOSDeviceUDID")
             phase = .done("\(build.title)\nCommit \(build.commit), built \(build.builtAt.formatted(.relative(presentation: .named)))")
             await reloadInventory()
             self.deviceChoice = .existing(devices.first { $0.udid == device.udid } ?? device)
@@ -606,8 +652,11 @@ final class InstallerModel {
         }
 
         if selectedRuntime == nil {
-            let booted = devices.first { device in device.isBooted && runtimes.contains { $0.identifier == device.runtimeID } }
-            selectRuntime(booted?.runtimeID ?? runtimes.first?.identifier)
+            let runtimeIDs = Set(runtimes.map(\.identifier))
+            let rememberedUDID = rememberedDeviceUDID
+            let remembered = devices.first { $0.udid == rememberedUDID && runtimeIDs.contains($0.runtimeID) }
+            let booted = devices.first { $0.isBooted && runtimeIDs.contains($0.runtimeID) }
+            selectRuntime(remembered?.runtimeID ?? booted?.runtimeID ?? runtimes.first?.identifier)
         } else if let deviceChoice, !deviceChoices.contains(deviceChoice) {
             self.deviceChoice = defaultDeviceChoice()
         } else if deviceChoice == nil {
@@ -615,11 +664,16 @@ final class InstallerModel {
         }
     }
 
+    private var rememberedDeviceUDID: String? {
+        UserDefaults.standard.string(forKey: "iOSDeviceUDID")
+    }
+
     private func defaultDeviceChoice() -> DeviceChoice? {
         let choices = deviceChoices
+        let remembered = choices.first { if case let .existing(device) = $0 { device.udid == rememberedDeviceUDID } else { false } }
         let booted = choices.first { if case let .existing(device) = $0 { device.isBooted } else { false } }
         let phone = choices.first { $0.label.hasPrefix("iPhone") }
-        return booted ?? phone ?? choices.first
+        return remembered ?? booted ?? phone ?? choices.first
     }
 
     private func updateDownloadProgress(_ progress: Double, title: String) {

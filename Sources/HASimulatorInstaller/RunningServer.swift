@@ -11,6 +11,8 @@ struct RunningServer: Equatable {
 
     var localURL: URL { URL(string: "http://localhost:\(port)")! }
 
+    var androidEmulatorURL: URL { URL(string: "http://\(Constants.androidEmulatorHostAddress):\(port)")! }
+
     var networkURL: URL? {
         networkAddress.flatMap { URL(string: "http://\($0):\(port)") }
     }

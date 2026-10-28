@@ -46,6 +46,9 @@ struct SetupSection: View {
                         : "A one-time download of several gigabytes.",
                     isDone: model.hasSimulators
                 ) {
+                    if model.hasSimulators {
+                        Button("Add Simulator…") { model.showsAddSimulator = true }
+                    }
                     Button(model.hasSimulators ? "Other Versions…" : "Download…") { model.showsRuntimeVersions = true }
                         .disabled(model.activity != nil)
                 }

@@ -8,7 +8,7 @@ struct InspectorView: View {
         VStack(spacing: 0) {
             Picker("Component", selection: $component) {
                 ForEach(Component.allCases) { component in
-                    Text(component.title).tag(component)
+                    Text(component.shortTitle).tag(component)
                 }
             }
             .pickerStyle(.segmented)
@@ -20,6 +20,8 @@ struct InspectorView: View {
             switch component {
             case .iOSApp:
                 IOSInspector(model: model)
+            case .androidApp:
+                AndroidInspector(model: model)
             case .core:
                 CoreInspector(model: model)
             case .frontend:

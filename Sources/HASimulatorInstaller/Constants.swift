@@ -30,6 +30,19 @@ enum Constants {
         cacheDirectory.appendingPathComponent("iOS", isDirectory: true)
     }
 
+    static var androidBuildsDirectory: URL {
+        cacheDirectory.appendingPathComponent("Android", isDirectory: true)
+    }
+
+    static var managedAndroidSDKDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("HASimulatorInstaller/Android SDK", isDirectory: true)
+    }
+
+    static let androidVirtualDeviceName = "Home_Assistant_Test"
+    static let androidSystemImageAPI = 36
+    static let androidEmulatorHostAddress = "10.0.2.2"
+
     static var toolsDirectory: URL {
         cacheDirectory.appendingPathComponent("Tools", isDirectory: true)
     }

@@ -42,10 +42,16 @@ struct IOSColumn: View {
                         }
 
                         ColumnField(title: "Device") {
-                            Picker("Device", selection: $model.deviceChoice) {
-                                ForEach(model.deviceChoices, id: \.self) { choice in
-                                    Text(choice.label).tag(Optional(choice))
+                            HStack {
+                                Picker("Device", selection: $model.deviceChoice) {
+                                    ForEach(model.deviceChoices, id: \.self) { choice in
+                                        Text(choice.label).tag(Optional(choice))
+                                    }
                                 }
+                                Button { model.showsAddSimulator = true } label: {
+                                    Image(systemName: "plus")
+                                }
+                                .help("Add a simulator")
                             }
                         }
 

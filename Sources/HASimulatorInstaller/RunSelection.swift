@@ -3,6 +3,9 @@ import Foundation
 struct RunSelection: Codable, Hashable {
     var iOSEnabled: Bool
     var iOSPullRequest: Int?
+    var androidEnabled: Bool?
+    var androidPullRequest: Int?
+    var androidFlavorValue: String?
     var coreEnabled: Bool
     var coreChannelValue: String
     var corePullRequest: Int?
@@ -17,6 +20,10 @@ struct RunSelection: Codable, Hashable {
         var parts: [(Component, String)] = []
         if iOSEnabled {
             parts.append((.iOSApp, iOSPullRequest.map { "#\($0)" } ?? "latest"))
+        }
+        if androidEnabled == true {
+            let flavor = androidFlavorValue.flatMap(AndroidFlavor.init(rawValue:)) ?? .full
+            parts.append((.androidApp, "\(androidPullRequest.map { "#\($0)" } ?? "latest") \(flavor.label.lowercased())"))
         }
         if coreEnabled {
             parts.append((.core, coreChannel == .pullRequest ? corePullRequest.map { "#\($0)" } ?? "Pull request" : coreChannel.shortLabel))

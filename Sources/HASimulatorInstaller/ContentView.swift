@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var inspected: Component = .core
 
     var body: some View {
+        @Bindable var android = model.android
         NavigationSplitView {
             SidebarView(model: model, selection: $selection)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
@@ -78,6 +79,15 @@ struct ContentView: View {
         }
         .sheet(isPresented: $model.showsRuntimeVersions) {
             RuntimeVersionsSheet(model: model)
+        }
+        .sheet(isPresented: $android.showsLicense) {
+            AndroidLicenseSheet(android: model.android)
+        }
+        .sheet(isPresented: $android.showsAddDevice) {
+            AddEmulatorSheet(android: model.android)
+        }
+        .sheet(isPresented: $model.showsAddSimulator) {
+            AddSimulatorSheet(model: model)
         }
     }
 

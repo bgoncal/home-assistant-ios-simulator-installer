@@ -8,6 +8,8 @@ struct GitHubRepository: Sendable {
     let branch: String
     let artifactName: String
     let buildName: String
+    var pullRequestWorkflowFile: String?
+    var pullRequestArtifactName: String?
 
     var path: String { "repos/\(owner)/\(name)" }
 
@@ -29,6 +31,18 @@ struct GitHubRepository: Sendable {
         branch: "dev",
         artifactName: "frontend-build",
         buildName: "frontend build"
+    )
+
+    static let android = GitHubRepository(
+        owner: "home-assistant",
+        name: "android",
+        displayName: "Android app",
+        workflowFile: "onPush.yml",
+        branch: "main",
+        artifactName: "release-apks",
+        buildName: "APK",
+        pullRequestWorkflowFile: "pr.yml",
+        pullRequestArtifactName: "APKs"
     )
 
     static let core = GitHubRepository(

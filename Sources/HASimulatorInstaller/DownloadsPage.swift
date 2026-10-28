@@ -68,7 +68,7 @@ struct DownloadsPage: View {
     private func isInUse(_ item: StoredItem, in group: StorageGroup) -> Bool {
         guard let running = model.server.running else { return group == .tools && model.server.isRunning }
         switch group {
-        case .iOSBuilds:
+        case .iOSBuilds, .androidBuilds:
             return false
         case .coreInstalls:
             return item.url.lastPathComponent == running.coreKey

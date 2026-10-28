@@ -6,33 +6,48 @@ struct RunPage: View {
     let onInspect: (Component) -> Void
 
     var body: some View {
-        Form {
-            UpdateBanner(updater: updater)
-            Section("What to run") {
-                HStack(alignment: .top, spacing: 20) {
-                    IOSColumn(model: model) { onInspect(.iOSApp) }
-                    Divider()
-                    CoreColumn(model: model) { onInspect(.core) }
-                    Divider()
-                    FrontendColumn(model: model) { onInspect(.frontend) }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if updater.state != .idle {
+                    GroupBox {
+                        UpdateBanner(updater: updater)
+                            .padding(6)
+                    }
                 }
-                .padding(.vertical, 4)
-            }
-            RunSection(model: model)
-            if let errorMessage = model.errorMessage {
-                Section {
+
+                Text("What to run")
+                    .font(.headline)
+                GroupBox {
+                    HStack(alignment: .top, spacing: 16) {
+                        IOSColumn(model: model) { onInspect(.iOSApp) }
+                        Divider()
+                        AndroidColumn(model: model) { onInspect(.androidApp) }
+                        Divider()
+                        CoreColumn(model: model) { onInspect(.core) }
+                        Divider()
+                        FrontendColumn(model: model) { onInspect(.frontend) }
+                    }
+                    .padding(10)
+                }
+
+                GroupBox {
+                    RunSection(model: model)
+                        .padding(10)
+                }
+
+                if let errorMessage = model.errorMessage {
                     Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                         .foregroundStyle(.red)
                         .textSelection(.enabled)
                 }
             }
+            .padding(20)
         }
-        .formStyle(.grouped)
         .navigationTitle("Run")
     }
 }
 
 #Preview {
     RunPage(model: InstallerModel(), updater: Updater(), onInspect: { _ in })
-        .frame(width: 900, height: 700)
+        .frame(width: 1100, height: 700)
 }

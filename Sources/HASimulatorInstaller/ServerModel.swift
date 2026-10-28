@@ -74,7 +74,7 @@ final class ServerModel {
 
     func status(of component: Component) -> ComponentStatus {
         switch component {
-        case .iOSApp:
+        case .iOSApp, .androidApp:
             return .off
         case .core:
             guard isActive else { return .off }

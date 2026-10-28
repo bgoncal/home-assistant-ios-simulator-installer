@@ -15,7 +15,10 @@ struct ServerStatusView: View {
                     .textSelection(.enabled)
             }
 
-            AddressRow(title: "On this Mac and in the Simulator", url: running.localURL)
+            AddressRow(title: "On this Mac and in the iOS Simulator", url: running.localURL)
+            if model.android.enabled {
+                AddressRow(title: "In the Android emulator", url: running.androidEmulatorURL)
+            }
             if let networkURL = running.networkURL {
                 AddressRow(title: "From a phone or another computer on the same network", url: networkURL)
             }
@@ -23,7 +26,10 @@ struct ServerStatusView: View {
             HStack {
                 Button("Show Log") { model.server.showLog() }
                 if model.canConnectAppToServer {
-                    Button("Connect the App to This Server") { Task { await model.connectAppToServer() } }
+                    Button("Connect the iOS App") { Task { await model.connectAppToServer() } }
+                }
+                if model.canConnectAndroidToServer {
+                    Button("Connect the Android App") { Task { await model.connectAndroidToServer() } }
                 }
             }
         }

@@ -6,13 +6,12 @@ struct RecentRunRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(run.date.formatted(date: .abbreviated, time: .shortened))
-            HStack(spacing: 6) {
+            HStack(spacing: 7) {
                 ForEach(run.selection.parts, id: \.component) { part in
-                    Image(systemName: part.component.systemImage)
-                        .accessibilityLabel(part.component.title)
+                    ComponentIcon(component: part.component, size: 13)
+                        .help(part.component.title)
                 }
             }
-            .font(.caption)
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)

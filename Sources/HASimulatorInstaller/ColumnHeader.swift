@@ -11,8 +11,12 @@ struct ColumnHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label(component.title, systemImage: component.systemImage)
-                    .font(.headline)
+                Label {
+                    Text(component.title)
+                } icon: {
+                    ComponentIcon(component: component, size: 15)
+                }
+                .font(.headline)
                 Spacer()
                 Toggle(component.title, isOn: $isOn)
                     .toggleStyle(.switch)

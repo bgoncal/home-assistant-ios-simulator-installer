@@ -48,7 +48,7 @@ struct GitHubClient: Sendable {
         ).workflowRuns
 
         for run in runs {
-            if let artifact = try await simulatorArtifact(for: run) {
+            if let artifact = try await simulatorArtifact(for: run, named: repository.artifactName) {
                 return ResolvedBuild(
                     artifactID: artifact.id,
                     artifactSize: artifact.sizeInBytes,
@@ -65,13 +65,16 @@ struct GitHubClient: Sendable {
         let pullRequest = try await pullRequest(number)
 
         let runs = try await get(
-            "\(repositoryPath)/actions/workflows/\(repository.workflowFile)/runs",
+            "\(repositoryPath)/actions/workflows/\(repository.pullRequestWorkflowFile ?? repository.workflowFile)/runs",
             query: ["head_sha": pullRequest.head.sha, "per_page": "20"],
             as: WorkflowRuns.self
         ).workflowRuns
 
         for run in runs {
-            if let artifact = try await simulatorArtifact(for: run) {
+            if let artifact = try await simulatorArtifact(
+                for: run,
+                named: repository.pullRequestArtifactName ?? repository.artifactName
+            ) {
                 return ResolvedBuild(
                     artifactID: artifact.id,
                     artifactSize: artifact.sizeInBytes,
@@ -105,10 +108,10 @@ struct GitHubClient: Sendable {
         }
     }
 
-    private func simulatorArtifact(for run: WorkflowRun) async throws -> Artifact? {
+    private func simulatorArtifact(for run: WorkflowRun, named name: String) async throws -> Artifact? {
         try await get("\(repositoryPath)/actions/runs/\(run.id)/artifacts", as: Artifacts.self)
             .artifacts
-            .first { $0.name == repository.artifactName && !$0.expired }
+            .first { $0.name == name && !$0.expired }
     }
 
     private func get<T: Decodable>(_ path: String, query: [String: String] = [:], as type: T.Type) async throws -> T {

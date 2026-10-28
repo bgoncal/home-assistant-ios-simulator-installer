@@ -4,12 +4,15 @@ struct RunSection: View {
     let model: InstallerModel
 
     var body: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 14) {
             if case let .working(message, progress) = model.server.phase {
                 PhaseRow(title: "Server", message: message, progress: progress)
             }
             if case let .working(message, progress) = model.phase {
                 PhaseRow(title: "iOS app", message: message, progress: progress)
+            }
+            if case let .working(message, progress) = model.android.phase {
+                PhaseRow(title: "Android app", message: message, progress: progress)
             }
 
             if let running = model.server.running {
@@ -34,11 +37,23 @@ struct RunSection: View {
                     .foregroundStyle(.red)
                     .textSelection(.enabled)
             }
+            if case let .done(summary) = model.android.phase, model.android.enabled {
+                Label(summary, systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+            }
+            if let androidError = model.android.errorMessage {
+                Label(androidError, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                    .textSelection(.enabled)
+            }
 
             HStack {
                 if model.installedDevice != nil {
                     Button("Take Screenshot") { Task { await model.takeScreenshot() } }
                     Button(model.isRecording ? "Stop Recording" : "Record Screen") { model.toggleRecording() }
+                }
+                if model.android.isRunning {
+                    Button("Android Screenshot") { Task { await model.takeAndroidScreenshot() } }
                 }
                 Spacer()
                 Button("Stop") { Task { await model.stop() } }
@@ -52,8 +67,7 @@ struct RunSection: View {
 }
 
 #Preview {
-    Form {
-        RunSection(model: InstallerModel())
-    }
-    .formStyle(.grouped)
+    RunSection(model: InstallerModel())
+        .padding()
+        .frame(width: 900)
 }
