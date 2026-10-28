@@ -104,9 +104,11 @@ Everything the app keeps on your Mac, with its size: iOS and Android app builds,
 
 ### Inspector
 
-- **iOS app:** the installed build and device, screenshot and recording, connecting to the server, removing the app, and what the app did.
-- **Android app:** the installed build, package and emulator, downloading the APK, a screenshot, connecting to the server, removing the app, and what the app did.
-- **Core:** the version and addresses, the port, the server's data folder, **Erase Server Data…**, and the live server log (or the app's own steps).
+The inspector has a tab for each part:
+
+- **iOS:** the installed build and simulator, **Take Screenshot** and **Record Screen**, **Connect the App to This Server**, **Remove App from Simulator…**, and what the app did.
+- **Android:** the installed build, package and emulator, **Download APK**, **Take Screenshot**, **Connect the App to This Server**, **Remove App from Emulator…**, and what the app did.
+- **Core:** the version and addresses, the port, **Show Data Folder**, **Erase Server Data…**, and the log: **Server** for the live server log, **Activity** for the app's own steps.
 - **Frontend:** the build being served, where it's stored, and what the app did.
 
 ## Troubleshooting
@@ -119,7 +121,7 @@ Everything the app keeps on your Mac, with its size: iOS and Android app builds,
 
 **"The app couldn't replace itself".** The app needs permission to change the folder it's in. Move it to your Applications folder, or download the update from its release page and install it like the first time.
 
-**"This build can't run in the Simulator".** The build was packaged without parts it needs and would crash on launch. This affects builds made before October 27, 2026, when the Home Assistant iOS project started preparing its simulator builds for use outside Xcode. Install **Latest version** instead. For a pull request, ask its author to push a new commit or update the branch: that makes a new build. Re-running the old checks doesn't help, because they rebuild the same code.
+**"This build can't run in the Simulator".** The build was packaged without parts it needs and would crash on launch. This affects builds made before October 27, 2026, when the Home Assistant iOS project started preparing its simulator builds for use outside Xcode. Choose **Latest** instead. For a pull request, ask its author to push a new commit or update the branch: that makes a new build. Re-running the old checks doesn't help, because they rebuild the same code.
 
 **"The checks for pull request … are still running" or "… failed".** The pull request's build isn't ready, or it didn't pass. Try again later, or ask the pull request's author.
 
@@ -141,6 +143,8 @@ The simulator stands in for most of the app, but not all of it. Notifications se
 - Frontend builds come from the `frontend-build` artifact of the [home-assistant/frontend CI workflow](https://github.com/home-assistant/frontend/actions/workflows/ci.yaml) (kept by GitHub for 7 days) or from the wheel attached to its latest release, and are served through Core's `frontend: development_repo` option.
 - Xcode versions come from [xcodereleases.com](https://xcodereleases.com) (14.3 and later), and iOS Simulator versions from Apple's simulator download index (iOS 16.4, the app's minimum, and later). iOS versions are installed with `xcodebuild -downloadPlatform iOS -buildVersion …` using the selected Xcode.
 - Everything else uses `simctl` from the selected Xcode.
+- Connecting an app to the server opens its invite link: `<scheme>://invite#url=…` with `simctl openurl` on iOS, and `homeassistant://invite#url=…` with `adb shell am start` on Android, where the address uses `10.0.2.2`.
+- The app was first called Home Assistant iOS Simulator Installer. The code, the bundle ID (`io.home-assistant.SimulatorInstaller`) and the folders in `~/Library` keep the old `HASimulatorInstaller` name, so updates find the builds, tools and server data already downloaded.
 
 ### GitHub sign-in with a code
 
