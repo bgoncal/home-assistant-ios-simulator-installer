@@ -1,11 +1,6 @@
 import Foundation
 
 enum Constants {
-    static let repositoryOwner = "home-assistant"
-    static let repositoryName = "iOS"
-    static let workflowFile = "ci.yml"
-    static let mainBranch = "main"
-    static let artifactName = "ios-simulator"
     static let minimumIOSVersion = "16.4"
     static let minimumXcodeVersion = "14.3"
 
@@ -23,8 +18,44 @@ enum Constants {
         return value
     }
 
+    static let defaultServerPort = 8123
+    static let pyPIProjectURL = URL(string: "https://pypi.org/pypi/homeassistant/json")!
+
     static var cacheDirectory: URL {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("HASimulatorInstaller", isDirectory: true)
+    }
+
+    static var iOSBuildsDirectory: URL {
+        cacheDirectory.appendingPathComponent("iOS", isDirectory: true)
+    }
+
+    static var toolsDirectory: URL {
+        cacheDirectory.appendingPathComponent("Tools", isDirectory: true)
+    }
+
+    static var coreBuildsDirectory: URL {
+        cacheDirectory.appendingPathComponent("Core", isDirectory: true)
+    }
+
+    static var frontendBuildsDirectory: URL {
+        cacheDirectory.appendingPathComponent("Frontend", isDirectory: true)
+    }
+
+    static var serverDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("HASimulatorInstaller/Server", isDirectory: true)
+    }
+
+    static var serverConfigDirectory: URL {
+        serverDirectory.appendingPathComponent("config", isDirectory: true)
+    }
+
+    static var serverLogFile: URL {
+        serverDirectory.appendingPathComponent("server.log")
+    }
+
+    static var serverPIDFile: URL {
+        serverDirectory.appendingPathComponent("server.pid")
     }
 }

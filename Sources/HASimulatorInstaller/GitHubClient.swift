@@ -1,11 +1,10 @@
 import Foundation
 
 struct GitHubClient: Sendable {
-    let token: String
+    let token: String?
+    var repository: GitHubRepository = .iOS
 
-    private var repositoryPath: String {
-        "repos/\(Constants.repositoryOwner)/\(Constants.repositoryName)"
-    }
+    private var repositoryPath: String { repository.path }
 
     func username() async throws -> String {
         try await get("user", as: User.self).login
@@ -20,14 +19,31 @@ struct GitHubClient: Sendable {
         }
     }
 
+    func branchHead() async throws -> String {
+        try await get("\(repositoryPath)/commits/\(repository.branch)", as: Commit.self).sha
+    }
+
+    func pullRequestHead(_ number: Int) async throws -> (sha: String, title: String) {
+        let pullRequest = try await pullRequest(number)
+        return (pullRequest.head.sha, pullRequest.title)
+    }
+
+    func latestReleaseAsset(withSuffix suffix: String) async throws -> (tag: String, url: URL, size: Int) {
+        let release = try await get("\(repositoryPath)/releases/latest", as: Release.self)
+        guard let asset = release.assets.first(where: { $0.name.hasSuffix(suffix) }) else {
+            throw InstallerError("The latest release of \(repository.displayName) has no \(suffix) file.")
+        }
+        return (release.tagName, asset.browserDownloadUrl, asset.size)
+    }
+
     func downloadRequest(artifactID: Int) -> URLRequest {
         request(for: "\(repositoryPath)/actions/artifacts/\(artifactID)/zip")
     }
 
     private func resolveLatest() async throws -> ResolvedBuild {
         let runs = try await get(
-            "\(repositoryPath)/actions/workflows/\(Constants.workflowFile)/runs",
-            query: ["branch": Constants.mainBranch, "event": "push", "status": "success", "per_page": "10"],
+            "\(repositoryPath)/actions/workflows/\(repository.workflowFile)/runs",
+            query: ["branch": repository.branch, "event": "push", "status": "success", "per_page": "10"],
             as: WorkflowRuns.self
         ).workflowRuns
 
@@ -36,25 +52,20 @@ struct GitHubClient: Sendable {
                 return ResolvedBuild(
                     artifactID: artifact.id,
                     artifactSize: artifact.sizeInBytes,
-                    title: "Latest on \(Constants.mainBranch): \(run.displayTitle)",
+                    title: "Latest on \(repository.branch): \(run.displayTitle)",
                     commit: String(run.headSha.prefix(7)),
                     builtAt: artifact.createdAt
                 )
             }
         }
-        throw InstallerError("No recent build of \(Constants.mainBranch) has a simulator app. Try again later.")
+        throw InstallerError("No recent build of the \(repository.displayName) on \(repository.branch) has a \(repository.buildName). Try again later.")
     }
 
     private func resolvePullRequest(_ number: Int) async throws -> ResolvedBuild {
-        let pullRequest: PullRequest
-        do {
-            pullRequest = try await get("\(repositoryPath)/pulls/\(number)", as: PullRequest.self)
-        } catch let error as HTTPError where error.status == 404 {
-            throw InstallerError("Pull request #\(number) doesn't exist.")
-        }
+        let pullRequest = try await pullRequest(number)
 
         let runs = try await get(
-            "\(repositoryPath)/actions/workflows/\(Constants.workflowFile)/runs",
+            "\(repositoryPath)/actions/workflows/\(repository.workflowFile)/runs",
             query: ["head_sha": pullRequest.head.sha, "per_page": "20"],
             as: WorkflowRuns.self
         ).workflowRuns
@@ -73,23 +84,31 @@ struct GitHubClient: Sendable {
 
         if runs.isEmpty {
             throw InstallerError(
-                "The checks haven't started for pull request #\(number) yet. If it comes from a new contributor, a maintainer may need to approve them first."
+                "The checks haven't started for \(repository.displayName) pull request #\(number) yet. If it comes from a new contributor, a maintainer may need to approve them first."
             )
         }
         if runs.contains(where: { $0.status != "completed" }) {
             throw InstallerError(
-                "The checks for pull request #\(number) are still running. Try again in a few minutes."
+                "The checks for \(repository.displayName) pull request #\(number) are still running. Try again in a few minutes."
             )
         }
         throw InstallerError(
-            "The checks for pull request #\(number) failed, so no simulator app was made. Ask the pull request author."
+            "The checks for \(repository.displayName) pull request #\(number) failed, or its \(repository.buildName) has expired. Ask the pull request author."
         )
+    }
+
+    private func pullRequest(_ number: Int) async throws -> PullRequest {
+        do {
+            return try await get("\(repositoryPath)/pulls/\(number)", as: PullRequest.self)
+        } catch let error as HTTPError where error.status == 404 {
+            throw InstallerError("\(repository.displayName) pull request #\(number) doesn't exist.")
+        }
     }
 
     private func simulatorArtifact(for run: WorkflowRun) async throws -> Artifact? {
         try await get("\(repositoryPath)/actions/runs/\(run.id)/artifacts", as: Artifacts.self)
             .artifacts
-            .first { $0.name == Constants.artifactName && !$0.expired }
+            .first { $0.name == repository.artifactName && !$0.expired }
     }
 
     private func get<T: Decodable>(_ path: String, query: [String: String] = [:], as type: T.Type) async throws -> T {
@@ -98,6 +117,9 @@ struct GitHubClient: Sendable {
         guard (200 ..< 300).contains(status) else {
             if status == 401 {
                 throw InstallerError("Your GitHub sign-in has expired. Sign out and sign in again.")
+            }
+            if status == 403 || status == 429, token == nil {
+                throw InstallerError("GitHub is limiting requests from this Mac. Sign in to GitHub in Setup and try again.")
             }
             throw HTTPError(status: status)
         }
@@ -113,7 +135,9 @@ struct GitHubClient: Sendable {
             components.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
         }
         var request = URLRequest(url: components.url!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let token {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("HASimulatorInstaller", forHTTPHeaderField: "User-Agent")
@@ -136,6 +160,21 @@ struct GitHubClient: Sendable {
 
         let title: String
         let head: Head
+    }
+
+    private struct Commit: Decodable {
+        let sha: String
+    }
+
+    private struct Release: Decodable {
+        struct Asset: Decodable {
+            let name: String
+            let size: Int
+            let browserDownloadUrl: URL
+        }
+
+        let tagName: String
+        let assets: [Asset]
     }
 
     private struct WorkflowRuns: Decodable {

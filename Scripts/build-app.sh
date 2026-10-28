@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 APP_NAME="Home Assistant iOS Simulator Installer"
 EXECUTABLE="HASimulatorInstaller"
 BUNDLE_ID="io.home-assistant.SimulatorInstaller"
-VERSION="${VERSION:-0.3}"
+VERSION="${VERSION:-0.4}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 swift build -c release
@@ -62,6 +62,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <string>public.app-category.developer-tools</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>The Home Assistant server you run with this app looks for Bluetooth devices nearby, like it does on a Home Assistant device.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>The Home Assistant server you run with this app finds devices on your network and lets the iOS Simulator and other devices connect to it.</string>
     <key>GitHubClientID</key>
     <string>${GITHUB_CLIENT_ID:-}</string>
 </dict>

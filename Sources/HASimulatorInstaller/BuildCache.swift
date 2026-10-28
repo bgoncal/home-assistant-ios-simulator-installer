@@ -11,8 +11,8 @@ enum BuildCache {
     }
 
     static func zipLocation(for artifactID: Int) throws -> URL {
-        try FileManager.default.createDirectory(at: Constants.cacheDirectory, withIntermediateDirectories: true)
-        return Constants.cacheDirectory.appendingPathComponent("\(artifactID).zip")
+        try FileManager.default.createDirectory(at: Constants.iOSBuildsDirectory, withIntermediateDirectories: true)
+        return Constants.iOSBuildsDirectory.appendingPathComponent("\(artifactID).zip")
     }
 
     static func extract(_ zip: URL, artifactID: Int) async throws -> URL {
@@ -36,6 +36,11 @@ enum BuildCache {
         }
     }
 
+    static func urlScheme(of app: URL) -> String? {
+        let types = Bundle(url: app)?.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]] ?? []
+        return types.lazy.compactMap { ($0["CFBundleURLSchemes"] as? [String])?.first }.first
+    }
+
     static func bundleIdentifier(of app: URL) throws -> String {
         guard let identifier = Bundle(url: app)?.bundleIdentifier else {
             throw InstallerError("The downloaded app is damaged. Try again.")
@@ -44,7 +49,7 @@ enum BuildCache {
     }
 
     private static func directory(for artifactID: Int) -> URL {
-        Constants.cacheDirectory.appendingPathComponent("\(artifactID)", isDirectory: true)
+        Constants.iOSBuildsDirectory.appendingPathComponent("\(artifactID)", isDirectory: true)
     }
 
     private static func appBundle(in directory: URL) -> URL? {
@@ -62,7 +67,7 @@ enum BuildCache {
     private static func removeOldBuilds() {
         let keys: Set<URLResourceKey> = [.contentModificationDateKey]
         let builds = ((try? FileManager.default.contentsOfDirectory(
-            at: Constants.cacheDirectory,
+            at: Constants.iOSBuildsDirectory,
             includingPropertiesForKeys: Array(keys)
         )) ?? [])
             .filter { $0.pathExtension != "zip" }
@@ -72,6 +77,14 @@ enum BuildCache {
                 return lhs > rhs
             }
         for build in builds.dropFirst(keptBuilds - 1) {
+            try? FileManager.default.removeItem(at: build)
+        }
+
+        let legacyBuilds = (try? FileManager.default.contentsOfDirectory(
+            at: Constants.cacheDirectory,
+            includingPropertiesForKeys: nil
+        )) ?? []
+        for build in legacyBuilds where Int(build.deletingPathExtension().lastPathComponent) != nil {
             try? FileManager.default.removeItem(at: build)
         }
     }

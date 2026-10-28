@@ -111,6 +111,10 @@ struct SimulatorController: Sendable {
         try await require(simctl(["launch", device.udid, bundleID]), "Opening the app failed")
     }
 
+    func open(_ url: URL, on device: SimulatorDevice) async throws {
+        try await require(simctl(["openurl", device.udid, url.absoluteString]), "Opening the link in the app failed")
+    }
+
     func terminate(bundleID: String, on device: SimulatorDevice) async throws {
         let result = try await simctl(["terminate", device.udid, bundleID])
         if !result.succeeded, !result.lastErrorLine.localizedCaseInsensitiveContains("found nothing to terminate") {

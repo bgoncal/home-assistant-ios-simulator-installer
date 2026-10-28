@@ -15,7 +15,8 @@ struct HASimulatorInstallerApp: App {
         Window("Home Assistant iOS Simulator Installer", id: "main") {
             ContentView(model: model, updater: updater)
         }
-        .windowResizability(.contentSize)
+        .defaultSize(width: 1440, height: 860)
+        .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(after: .appInfo) {
                 Button("Check for Updates…") {

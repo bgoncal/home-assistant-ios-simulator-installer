@@ -4,6 +4,14 @@ import Observation
 @MainActor
 @Observable
 final class InstallerModel {
+    let activityLog: ActivityLog
+    let server: ServerModel
+    let recentRuns = RecentRuns()
+
+    var iOSEnabled = UserDefaults.standard.object(forKey: "iOSEnabled") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(iOSEnabled, forKey: "iOSEnabled") }
+    }
+
     var xcodes: [XcodeInstallation] = []
     var selectedXcode: XcodeInstallation?
     var isCheckingSetup = false
@@ -32,17 +40,61 @@ final class InstallerModel {
     var pullRequestText = ""
     var startFresh = false
 
-    var phase: InstallPhase = .idle
+    var phase: InstallPhase = .idle {
+        didSet {
+            switch phase {
+            case let .working(message, _):
+                activityLog.add(message, for: .iOSApp)
+            case let .done(summary):
+                activityLog.add("Running \(summary.replacingOccurrences(of: "\n", with: ", "))", for: .iOSApp)
+            case .idle:
+                break
+            }
+        }
+    }
+
     var errorMessage: String?
+    private(set) var appErrorMessage: String?
+    private(set) var installedBuild: ResolvedBuild?
     var installedDevice: SimulatorDevice?
     var runningBundleID: String?
+    var appURLScheme: String?
     var recordingFile: URL?
 
     private var token: String?
+    private var installedArtifactID: Int?
     private var signInTask: Task<Void, Never>?
     private var activityTask: Task<Void, Never>?
     private var recordingProcess: Process?
     private var installTask: Task<Void, Never>?
+
+    init() {
+        let activityLog = ActivityLog()
+        self.activityLog = activityLog
+        server = ServerModel(activityLog: activityLog)
+    }
+
+    func status(of component: Component) -> ComponentStatus {
+        guard component == .iOSApp else { return server.status(of: component) }
+        guard iOSEnabled else { return .off }
+        if case let .working(message, _) = phase { return .working(message) }
+        if let appErrorMessage { return .failed(appErrorMessage) }
+        if runningBundleID != nil, let installedBuild { return .running(installedBuild.title) }
+        return .ready
+    }
+
+    func removeAppFromSimulator() async {
+        guard let simulator, let installedDevice, let runningBundleID else { return }
+        do {
+            try await simulator.uninstall(bundleID: runningBundleID, from: installedDevice)
+            self.runningBundleID = nil
+            installedArtifactID = nil
+            phase = .idle
+            activityLog.add("Removed the app from \(installedDevice.name)", for: .iOSApp)
+        } catch {
+            appErrorMessage = error.localizedDescription
+        }
+    }
 
     var hasXcode: Bool { selectedXcode != nil }
     var hasSimulators: Bool { !runtimes.isEmpty }
@@ -50,7 +102,9 @@ final class InstallerModel {
     var isReady: Bool { hasXcode && licenseMessage == nil && hasSimulators && isSignedIn }
     var isRecording: Bool { recordingProcess != nil }
     var canSignInWithGitHub: Bool { Constants.gitHubClientID != nil }
-    var canStop: Bool { phase.isWorking || runningBundleID != nil }
+    var isBusy: Bool { phase.isWorking || server.phase.isWorking }
+    var canStop: Bool { isBusy || runningBundleID != nil || server.isRunning }
+    var canConnectAppToServer: Bool { installedDevice != nil && appURLScheme != nil && server.running != nil }
 
     var selectedRuntime: SimulatorRuntime? {
         runtimes.first { $0.identifier == selectedRuntimeID }
@@ -80,8 +134,15 @@ final class InstallerModel {
         return BuildSource.pullRequestNumber(from: pullRequestText).map(BuildSource.pullRequest)
     }
 
-    var canInstall: Bool {
-        isReady && selectedSource != nil && deviceChoice != nil && !phase.isWorking
+    var canInstallApp: Bool {
+        isReady && selectedSource != nil && deviceChoice != nil
+    }
+
+    var canRun: Bool {
+        guard !isBusy, iOSEnabled || server.isActive else { return false }
+        if iOSEnabled, !canInstallApp { return false }
+        if server.isActive, !server.canStart(isSignedIn: isSignedIn) { return false }
+        return true
     }
 
     private var simulator: SimulatorController? {
@@ -264,19 +325,50 @@ final class InstallerModel {
         NSWorkspace.shared.open(selectedXcode.url)
     }
 
-    func install() {
-        guard canInstall else { return }
+    var currentSelection: RunSelection {
+        RunSelection(
+            iOSEnabled: iOSEnabled,
+            iOSPullRequest: usePullRequest ? BuildSource.pullRequestNumber(from: pullRequestText) : nil,
+            coreEnabled: server.coreEnabled,
+            coreChannelValue: server.coreChannel.rawValue,
+            corePullRequest: server.coreChannel == .pullRequest ? server.corePullRequest : nil,
+            frontendEnabled: server.frontendEnabled,
+            frontendChannelValue: server.frontendChannel.rawValue,
+            frontendPullRequest: server.frontendChannel == .pullRequest ? server.frontendPullRequest : nil
+        )
+    }
+
+    func apply(_ selection: RunSelection) {
+        guard !isBusy else { return }
+        iOSEnabled = selection.iOSEnabled
+        usePullRequest = selection.iOSPullRequest != nil
+        pullRequestText = selection.iOSPullRequest.map(String.init) ?? ""
+        server.coreEnabled = selection.coreEnabled
+        server.coreChannel = selection.coreChannel
+        server.corePullRequestText = selection.corePullRequest.map(String.init) ?? ""
+        server.frontendEnabled = selection.frontendEnabled
+        server.frontendChannel = selection.frontendChannel
+        server.frontendPullRequestText = selection.frontendPullRequest.map(String.init) ?? ""
+    }
+
+    func run() {
+        guard canRun else { return }
+        recentRuns.record(currentSelection)
+        errorMessage = nil
         installTask = Task {
-            await installAndOpen()
+            async let serverRun: Void = startServerIfNeeded()
+            async let appRun: Void = installAppIfNeeded()
+            _ = await (serverRun, appRun)
             installTask = nil
         }
     }
 
     func stop() async {
-        if phase.isWorking {
+        if isBusy {
             installTask?.cancel()
             return
         }
+        await server.stop()
         guard let simulator, let installedDevice, let runningBundleID else { return }
         do {
             try await simulator.terminate(bundleID: runningBundleID, on: installedDevice)
@@ -286,16 +378,48 @@ final class InstallerModel {
         }
     }
 
+    func connectAppToServer() async {
+        guard let simulator, let installedDevice, let appURLScheme, let running = server.running else { return }
+        let address = running.localURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        guard let invite = URL(string: "\(appURLScheme)://invite#url=\(address)") else { return }
+        do {
+            try await simulator.open(invite, on: installedDevice)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func startServerIfNeeded() async {
+        guard server.isActive else {
+            await server.stop()
+            return
+        }
+        await server.start(token: token)
+    }
+
+    private func installAppIfNeeded() async {
+        guard iOSEnabled else { return }
+        await installAndOpen()
+    }
+
     private func installAndOpen() async {
         guard let simulator, let token, let runtime = selectedRuntime, let deviceChoice,
               let source = selectedSource else { return }
-        errorMessage = nil
-        installedDevice = nil
-        runningBundleID = nil
+        appErrorMessage = nil
+        let previousPhase = phase
 
         do {
             phase = .working("Finding the build…", progress: nil)
             let build = try await GitHubClient(token: token).resolve(source)
+
+            if !startFresh, runningBundleID != nil, build.artifactID == installedArtifactID,
+               case let .existing(device) = deviceChoice, device.udid == installedDevice?.udid {
+                phase = previousPhase
+                return
+            }
+            installedDevice = nil
+            runningBundleID = nil
+            installedArtifactID = nil
 
             let app: URL
             if let cached = BuildCache.extractedApp(for: build.artifactID) {
@@ -313,6 +437,8 @@ final class InstallerModel {
                 app = try await BuildCache.extract(zip, artifactID: build.artifactID)
             }
             let bundleID = try BuildCache.bundleIdentifier(of: app)
+            StorageCatalog.saveTitle("\(build.title) (\(build.commit))", in: app.deletingLastPathComponent())
+            appURLScheme = BuildCache.urlScheme(of: app)
 
             phase = .working("Checking the build…", progress: nil)
             let missing = try await simulator.missingFrameworks(in: app)
@@ -347,15 +473,19 @@ final class InstallerModel {
 
             installedDevice = device
             runningBundleID = bundleID
+            installedArtifactID = build.artifactID
+            installedBuild = build
             phase = .done("\(build.title)\nCommit \(build.commit), built \(build.builtAt.formatted(.relative(presentation: .named)))")
             await reloadInventory()
             self.deviceChoice = .existing(devices.first { $0.udid == device.udid } ?? device)
         } catch {
             phase = .idle
             if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled {
+                activityLog.add("Stopped", for: .iOSApp)
                 return
             }
-            errorMessage = error.localizedDescription
+            appErrorMessage = error.localizedDescription
+            activityLog.add(error.localizedDescription, for: .iOSApp, isError: true)
         }
     }
 
