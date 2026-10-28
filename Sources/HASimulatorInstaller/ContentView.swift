@@ -65,6 +65,7 @@ struct ContentView: View {
             }
         }
         .frame(minWidth: 1100, minHeight: 640)
+        .task { model.showOnboardingIfNeeded() }
         .task { await model.refreshSetup() }
         .task { await model.server.stopLeftoverServer() }
         .task { await updater.check(userInitiated: false) }
@@ -88,6 +89,9 @@ struct ContentView: View {
         }
         .sheet(isPresented: $model.showsAddSimulator) {
             AddSimulatorSheet(model: model)
+        }
+        .sheet(isPresented: $model.showsOnboarding) {
+            OnboardingSheet(model: model)
         }
     }
 

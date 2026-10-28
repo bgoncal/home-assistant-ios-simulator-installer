@@ -112,6 +112,10 @@ struct SimulatorController: Sendable {
         try await require(simctl(["launch", device.udid, bundleID]), "Opening the app failed")
     }
 
+    func isInstalled(_ bundleID: String, on device: SimulatorDevice) async -> Bool {
+        (try? await simctl(["get_app_container", device.udid, bundleID]))?.succeeded ?? false
+    }
+
     func open(_ url: URL, on device: SimulatorDevice) async throws {
         try await require(simctl(["openurl", device.udid, url.absoluteString]), "Opening the link in the app failed")
     }

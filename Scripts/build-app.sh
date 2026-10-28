@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Builds "Home Assistant iOS Simulator Installer.app" into ./build.
+# Builds "Home Assistant Test Lab.app" into ./build.
 #
 # Environment:
 #   GITHUB_CLIENT_ID  Client ID of the GitHub OAuth App (device flow enabled). Required for "Sign In".
@@ -10,10 +10,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-APP_NAME="Home Assistant iOS Simulator Installer"
+APP_NAME="Home Assistant Test Lab"
 EXECUTABLE="HASimulatorInstaller"
 BUNDLE_ID="io.home-assistant.SimulatorInstaller"
-VERSION="${VERSION:-0.5}"
+VERSION="${VERSION:-0.6}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 
 swift build -c release

@@ -41,6 +41,7 @@ final class AndroidModel {
     private(set) var installedBuild: ResolvedBuild?
     private(set) var installedPackage: String?
     private(set) var serial: String?
+    var needsServerConnection = false
 
     let activityLog: ActivityLog
     private var installedArtifactID: Int?
@@ -172,8 +173,10 @@ final class AndroidModel {
                 try await controller.uninstall(package.packageName, from: serial)
             }
 
+            let wasInstalled = startFresh ? false : await controller.isInstalled(package.packageName, on: serial)
             phase = .working("Installing…", progress: nil)
             try await controller.install(package.apk, on: serial)
+            needsServerConnection = !wasInstalled
 
             phase = .working("Opening the app…", progress: nil)
             try await controller.launch(package.packageName, on: serial)

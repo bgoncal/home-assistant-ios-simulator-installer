@@ -62,6 +62,10 @@ struct AndroidEmulatorController: Sendable {
         }
     }
 
+    func isInstalled(_ packageName: String, on serial: String) async -> Bool {
+        (try? await adb(["-s", serial, "shell", "pm", "path", packageName]))?.output.contains("package:") ?? false
+    }
+
     func uninstall(_ packageName: String, from serial: String) async throws {
         _ = try await adb(["-s", serial, "uninstall", packageName])
     }

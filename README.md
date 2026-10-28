@@ -1,4 +1,4 @@
-# Home Assistant iOS Simulator Installer
+# Home Assistant Test Lab
 
 A Mac app for trying test builds of Home Assistant without building anything:
 
@@ -11,12 +11,12 @@ Pick the latest version or a pull request for each one, in any combination: just
 
 ## Install
 
-1. Download `Home-Assistant-iOS-Simulator-Installer.zip` from the [latest release](https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest).
-2. Double-click the zip to unzip it, and drag **Home Assistant iOS Simulator Installer** into your **Applications** folder.
+1. Download `Home-Assistant-Test-Lab.zip` from the [latest release](https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest).
+2. Double-click the zip to unzip it, and drag **Home Assistant Test Lab** into your **Applications** folder.
 3. The app isn't signed by Apple, so macOS refuses to open it at first. Open **Terminal** and run this once:
 
    ```bash
-   xattr -dr com.apple.quarantine "/Applications/Home Assistant iOS Simulator Installer.app"
+   xattr -dr com.apple.quarantine "/Applications/Home Assistant Test Lab.app"
    ```
 
 4. Open the app from Applications.
@@ -24,14 +24,14 @@ Pick the latest version or a pull request for each one, in any combination: just
 Or do all of it in one go from Terminal:
 
 ```bash
-curl -fL -o /tmp/ha-sim-installer.zip https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest/download/Home-Assistant-iOS-Simulator-Installer.zip && ditto -x -k /tmp/ha-sim-installer.zip /Applications && xattr -dr com.apple.quarantine "/Applications/Home Assistant iOS Simulator Installer.app" && open "/Applications/Home Assistant iOS Simulator Installer.app"
+curl -fL -o /tmp/ha-test-lab.zip https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest/download/Home-Assistant-Test-Lab.zip && ditto -x -k /tmp/ha-test-lab.zip /Applications && xattr -dr com.apple.quarantine "/Applications/Home Assistant Test Lab.app" && open "/Applications/Home Assistant Test Lab.app"
 ```
 
 ## Updates
 
 The app checks for a new version each time it opens, and you can check any time from the app menu with **Check for Updates…**. When one is available, a banner at the top of the window shows what's new: click **Install Update** and the app downloads it, replaces itself and reopens. You don't need to run the Terminal command again.
 
-Version 0.1 can't update itself. If you have it, download the latest version once by following [Install](#install) again.
+Updating from 0.5 or earlier keeps the old name, *Home Assistant iOS Simulator Installer*, in your Applications folder until the next update renames it. Version 0.1 can't update itself. If you have it, download the latest version once by following [Install](#install) again.
 
 ## What you need
 
@@ -43,6 +43,8 @@ Version 0.1 can't update itself. If you have it, download the latest version onc
 - To use the iOS app without Core: a Home Assistant server your Mac can reach.
 
 ## Using it
+
+The first time you open the app, a short welcome asks what you want to test, sets up only what that needs (Xcode, the Android emulator, GitHub) and offers to run it right away. You can open it again with **Onboard again** at the bottom of the sidebar, or from **Help > Welcome to Home Assistant Test Lab**.
 
 The sidebar has three pages, **Run**, **Setup** and **Downloads**, and your **Recent** runs. Each part shows its status on the Run page: green when it's running, red when it failed. The inspector on the right (toolbar button, or the ⓘ next to a status) shows each part's details, extra settings and log.
 
@@ -73,7 +75,7 @@ When the server is up, the Run page shows its address:
 - **In the Android emulator**, such as `http://10.0.2.2:8123`. That's how the emulator reaches your Mac.
 - **From a phone or another computer on the same network**, such as `http://192.168.1.20:8123`.
 
-**Connect the iOS App** and **Connect the Android App** open the app's onboarding with the right address filled in.
+When an app is newly installed (or started fresh) in the same run as Core, it's connected to the server for you: the app opens its onboarding with the right address filled in. On iOS, tap **Open** when the Simulator asks to open the link. **Connect the iOS App** and **Connect the Android App** do the same at any time.
 
 The server is named *Simulator Test Server* followed by your Mac's name, so it never clashes with your real Home Assistant on the network. Port 8123 is used when it's free; otherwise the next free one. You can choose another port in the inspector.
 
@@ -81,7 +83,7 @@ The server is named *Simulator Test Server* followed by your Mac's name, so it n
 
 - **Stop** (⌘.) cancels a run in progress, or stops the server and quits the app in the simulator.
 - **Take Screenshot**, **Record Screen** and **Android Screenshot** save to your Desktop. Click **Record Screen** again to stop recording. Attach these when you report what you found.
-- Quitting the installer stops the server.
+- Quitting the app stops the server.
 
 In the simulator, click to tap and click-and-drag to scroll.
 
@@ -102,14 +104,14 @@ Everything the app keeps on your Mac, with its size: iOS and Android app builds,
 
 ### Inspector
 
-- **iOS app:** the installed build and device, screenshot and recording, connecting to the server, removing the app, and what the installer did.
-- **Android app:** the installed build, package and emulator, downloading the APK, a screenshot, connecting to the server, removing the app, and what the installer did.
-- **Core:** the version and addresses, the port, the server's data folder, **Erase Server Data…**, and the live server log (or the installer's own steps).
-- **Frontend:** the build being served, where it's stored, and what the installer did.
+- **iOS app:** the installed build and device, screenshot and recording, connecting to the server, removing the app, and what the app did.
+- **Android app:** the installed build, package and emulator, downloading the APK, a screenshot, connecting to the server, removing the app, and what the app did.
+- **Core:** the version and addresses, the port, the server's data folder, **Erase Server Data…**, and the live server log (or the app's own steps).
+- **Frontend:** the build being served, where it's stored, and what the app did.
 
 ## Troubleshooting
 
-**macOS asks to let the installer use Bluetooth or find devices on your local network.** That's the Home Assistant server you started, which looks for devices like it does on a Home Assistant device. Either answer works; with **Don't Allow**, Bluetooth and network discovery integrations find nothing.
+**macOS asks to let Home Assistant Test Lab use Bluetooth or find devices on your local network.** That's the Home Assistant server you started, which looks for devices like it does on a Home Assistant device. Either answer works; with **Don't Allow**, Bluetooth and network discovery integrations find nothing.
 
 **Core fails to start.** Open the inspector's **Core** tab and look at the server log. **Start fresh** helps when a newer version left data an older one can't read.
 
@@ -150,10 +152,10 @@ Builds made with a GitHub OAuth App client ID also offer **Sign In with GitHub�
 Scripts/build-app.sh
 ```
 
-The app lands in `build/Home Assistant iOS Simulator Installer.app`, signed ad hoc. Optional environment variables:
+The app lands in `build/Home Assistant Test Lab.app`, signed ad hoc. Optional environment variables:
 
 - `GITHUB_CLIENT_ID`: OAuth App client ID for **Sign In with GitHub…**.
 - `SIGN_IDENTITY` and `NOTARY_PROFILE`: a Developer ID signing identity and a `notarytool` keychain profile, to sign and notarize the app so it opens without the `xattr` step.
-- `VERSION`: the version number, `0.5` by default.
+- `VERSION`: the version number, `0.6` by default.
 
 During development you can also run it with `swift run`.

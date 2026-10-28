@@ -12,7 +12,7 @@ struct HASimulatorInstallerApp: App {
     }
 
     var body: some Scene {
-        Window("Home Assistant iOS Simulator Installer", id: "main") {
+        Window("Home Assistant Test Lab", id: "main") {
             ContentView(model: model, updater: updater)
         }
         .defaultSize(width: 1440, height: 860)
@@ -22,6 +22,9 @@ struct HASimulatorInstallerApp: App {
                 Button("Check for Updates…") {
                     Task { await updater.check(userInitiated: true) }
                 }
+            }
+            CommandGroup(replacing: .help) {
+                Button("Welcome to Home Assistant Test Lab") { model.showsOnboarding = true }
             }
         }
     }

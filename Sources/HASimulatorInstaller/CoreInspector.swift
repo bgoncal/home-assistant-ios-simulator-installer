@@ -45,7 +45,7 @@ struct CoreInspector: View {
             Section {
                 Picker("Log", selection: $showsServerLog) {
                     Text("Server").tag(true)
-                    Text("Installer").tag(false)
+                    Text("Activity").tag(false)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

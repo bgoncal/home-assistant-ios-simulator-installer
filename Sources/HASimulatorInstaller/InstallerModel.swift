@@ -28,6 +28,8 @@ final class InstallerModel {
     var showsXcodeVersions = false
     var showsRuntimeVersions = false
     var showsAddSimulator = false
+    var showsOnboarding = false
+    private var needsServerConnection = false
     var showsBetas = false
     var activity: Activity?
 
@@ -262,6 +264,30 @@ final class InstallerModel {
         deviceChoice = .existing(devices.first { $0.udid == device.udid } ?? device)
     }
 
+    var onboardingNeedsGitHub: Bool {
+        iOSEnabled || android.enabled || (server.frontendEnabled && server.frontendChannel.needsGitHub)
+    }
+
+    var onboardingSetupIsComplete: Bool {
+        let iOSReady = !iOSEnabled || (hasXcode && licenseMessage == nil && hasSimulators)
+        let androidReady = !android.enabled || android.isReady
+        let gitHubReady = !onboardingNeedsGitHub || isSignedIn
+        return iOSReady && androidReady && gitHubReady
+    }
+
+    func showOnboardingIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: "hasCompletedOnboarding"), recentRuns.runs.isEmpty else { return }
+        showsOnboarding = true
+    }
+
+    func completeOnboarding(runNow: Bool) {
+        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        showsOnboarding = false
+        if runNow {
+            run()
+        }
+    }
+
     func cancelActivity() {
         activityTask?.cancel()
     }
@@ -269,7 +295,7 @@ final class InstallerModel {
     func signIn() {
         errorMessage = nil
         guard let clientID = Constants.gitHubClientID else {
-            errorMessage = "This copy of the installer can't sign in to GitHub because it was built without a GitHub client ID."
+            errorMessage = "This copy of the app can't sign in to GitHub because it was built without a GitHub client ID."
             return
         }
         signInTask = Task {
@@ -384,6 +410,7 @@ final class InstallerModel {
             async let appRun: Void = installAppIfNeeded()
             async let androidRun: Void = installAndroidAppIfNeeded()
             _ = await (serverRun, appRun, androidRun)
+            await connectNewAppsToServer()
             installTask = nil
         }
     }
@@ -412,6 +439,22 @@ final class InstallerModel {
             try await simulator.open(invite, on: installedDevice)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func connectNewAppsToServer() async {
+        guard server.running != nil, !Task.isCancelled else { return }
+        if needsServerConnection, runningBundleID != nil {
+            needsServerConnection = false
+            try? await Task.sleep(for: .seconds(2))
+            await connectAppToServer()
+            activityLog.add("Opened the app's onboarding with this server's address", for: .iOSApp)
+        }
+        if android.needsServerConnection, android.isRunning {
+            android.needsServerConnection = false
+            try? await Task.sleep(for: .seconds(2))
+            await connectAndroidToServer()
+            activityLog.add("Opened the app's onboarding with this server's address", for: .androidApp)
         }
     }
 
@@ -510,8 +553,10 @@ final class InstallerModel {
                 try await simulator.uninstall(bundleID: bundleID, from: device)
             }
 
+            let wasInstalled = startFresh ? false : await simulator.isInstalled(bundleID, on: device)
             phase = .working("Installing…", progress: nil)
             try await simulator.install(app, on: device)
+            needsServerConnection = !wasInstalled
 
             phase = .working("Opening the app…", progress: nil)
             try await simulator.launch(bundleID: bundleID, on: device)

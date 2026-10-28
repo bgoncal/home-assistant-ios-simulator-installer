@@ -83,6 +83,7 @@ final class Updater {
                 throw InstallerError("The downloaded update isn't a valid copy of this app.")
             }
             _ = try? await ProcessRunner.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
+            let renamedApp = currentApp.deletingLastPathComponent().appendingPathComponent(newApp.lastPathComponent)
 
             do {
                 _ = try FileManager.default.replaceItemAt(currentApp, withItemAt: newApp)
@@ -92,7 +93,13 @@ final class Updater {
                 )
             }
 
-            try relaunch(currentApp)
+            var installedApp = currentApp
+            if renamedApp.lastPathComponent != currentApp.lastPathComponent,
+               !FileManager.default.fileExists(atPath: renamedApp.path),
+               (try? FileManager.default.moveItem(at: currentApp, to: renamedApp)) != nil {
+                installedApp = renamedApp
+            }
+            try relaunch(installedApp)
         } catch {
             state = .failed(error.localizedDescription, update)
         }
