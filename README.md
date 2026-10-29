@@ -9,6 +9,8 @@ A Mac app for trying test builds of Home Assistant without building anything:
 
 Pick the latest version or a pull request for each one, in any combination: just the iOS app with your own server, both apps, just a server, a frontend pull request on the latest Core, or everything together.
 
+<img width="3430" height="2438" alt="CleanShot 2026-10-28 at 17 55 05@2x" src="https://github.com/user-attachments/assets/33eab6d4-c4f4-4079-a0ff-94d02fd50468" />
+
 ## Install
 
 1. Download `Home-Assistant-Test-Lab.zip` from the [latest release](https://github.com/bgoncal/home-assistant-ios-simulator-installer/releases/latest).
